@@ -2,6 +2,10 @@ from dataclasses import dataclass
 
 from environs import Env
 
+from tg_bot.services.open_weather_api import OWM
+from tg_bot.services.echange_rates_api import Exchanger
+from tg_bot.services.pexels_api import Pexels
+
 
 @dataclass
 class DbConfig:
@@ -15,14 +19,19 @@ class DbConfig:
 class TgBot:
     token: str
     owm_token: str
+    exchanger_token: str
+    pexels_token: str
     admin_ids: list[int]
     use_redis: bool
     bot_name: str
+    owm_api: OWM | None = None
+    exchanger_api: Exchanger | None = None
+    pxels_api: Pexels | None = None
 
 
 @dataclass
 class Miscellaneous:
-    add_admin_cmd: str = None
+    add_admin_cmd: str
     other_params = None
 
 
@@ -33,7 +42,7 @@ class Config:
     misc: Miscellaneous
 
 
-def load_config(path: str = None) -> Config:
+def load_config(path: str | None = None) -> Config:
     env = Env()
     env.read_env(path)
 
@@ -41,9 +50,15 @@ def load_config(path: str = None) -> Config:
         tg_bot=TgBot(
             token=env.str("BOT_TOKEN"),
             owm_token=env.str("OWM_TOKEN"),
+            exchanger_token=env.str("EXCHANGER_TOKEN"),
+            pexels_token=env.str("PEXELS_TOKEN"),
             admin_ids=list(map(int, env.list("ADMINS"))),
             use_redis=env.bool("USE_REDIS"),
-            bot_name=env.str("BOT_NAME")
+            bot_name=env.str("BOT_NAME"),
+            owm_api=OWM(),
+            exchanger_api=Exchanger(),
+            pxels_api=Pexels(),
+
         ),
         db=DbConfig(
             host=env.str('DB_HOST'),
