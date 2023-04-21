@@ -36,7 +36,7 @@ class User(Base):
     Base.metadata
 
     user_id = mapped_column(BigInteger, primary_key=True, index=True)
-    first_name = mapped_column(Text, default=None)
+    full_name = mapped_column(Text, default=None)
     username = mapped_column(Text)
     # contact = mapped_column(Text)
     is_blocked = mapped_column(Boolean, default=False)

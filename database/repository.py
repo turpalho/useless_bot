@@ -25,16 +25,13 @@ class Repo:
         async with async_session() as session:
             stmt = select(Config).where(Config.id == 1)
             result = await session.execute(stmt)
-            result = result.first()
-            await session.commit()
-        return result
+            return result.scalar()
 
-    async def create_config(self, admins_ids: list, doc_ids: list) -> None:
+    async def create_config(self, admins_ids: list) -> None:
         async_session = async_sessionmaker(self.engine, expire_on_commit=False)
         async with async_session() as session:
             new_str = str(admins_ids)[1:-1]
-            new_docs = str(doc_ids)[1:-1]
-            session.add(Config(id=1, admins_ids=new_str, doc_ids=new_docs))
+            session.add(Config(id=1, admins_ids=new_str))
             await session.commit()
         return
 
@@ -52,19 +49,26 @@ class Repo:
     async def get_user_username(self, user_id: int):
         async_session = async_sessionmaker(self.engine, expire_on_commit=False)
         async with async_session() as session:
-            stmt = select(User.username, User.first_name).where(
+            stmt = select(User.username, User.full_name).where(
                 User.user_id == user_id)
             result = await session.execute(stmt)
-            result = result.first()
-            await session.commit()
-        return result
+        return result.scalar()
 
-    async def add_user(self, user_id: int, username: str, first_name=None) -> None:
+    async def user_exists(self, user_id: int) -> bool:
+        async_session = async_sessionmaker(self.engine, expire_on_commit=False)
+        async with async_session() as session:
+            stmt = select(User.username, User.full_name).where(
+                User.user_id == user_id)
+            result = await session.execute(stmt)
+        logging.info(result.scalar())
+        return bool(len(result.scalar()))
+
+    async def add_user(self, user_id: int, username: str, full_name=None) -> None:
         async_session = async_sessionmaker(self.engine, expire_on_commit=False)
         async with async_session() as session:
             try:
                 session.add(
-                    User(user_id=user_id, username=username, first_name=first_name))
+                    User(user_id=user_id, username=username, full_name=full_name))
                 await session.commit()
             except exc.IntegrityError:
                 await session.rollback()
@@ -83,7 +87,7 @@ class Repo:
         async_session = async_sessionmaker(self.engine, expire_on_commit=False)
         async with async_session() as session:
             stmt = update(User).where(User.user_id == user_id).values(
-                first_name=new_firstname)
+                full_name=new_firstname)
             await session.execute(stmt)
             await session.commit()
         return
