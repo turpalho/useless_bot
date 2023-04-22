@@ -1,7 +1,7 @@
 import logging
 from typing import List
 
-from sqlalchemy import exc, select, update, desc, text, func
+from sqlalchemy import exc, select, update
 from sqlalchemy.ext.asyncio import async_sessionmaker
 from sqlalchemy.ext.asyncio.engine import AsyncEngine
 
@@ -25,7 +25,9 @@ class Repo:
         async with async_session() as session:
             stmt = select(Config).where(Config.id == 1)
             result = await session.execute(stmt)
-            return result.scalar()
+            result = result.first()
+            await session.commit()
+        return result
 
     async def create_config(self, admins_ids: list) -> None:
         async_session = async_sessionmaker(self.engine, expire_on_commit=False)
@@ -60,8 +62,8 @@ class Repo:
             stmt = select(User.username, User.full_name).where(
                 User.user_id == user_id)
             result = await session.execute(stmt)
-        logging.info(result.scalar())
-        return bool(len(result.scalar()))
+        # logging.info(result.scalar())
+        return result.first()
 
     async def add_user(self, user_id: int, username: str, full_name=None) -> None:
         async_session = async_sessionmaker(self.engine, expire_on_commit=False)
