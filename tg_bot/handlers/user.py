@@ -60,9 +60,16 @@ async def application_sent(call: CallbackQuery, repo: Repo, state: FSMContext) -
 async def application_sent(message: Message, state: FSMContext, config: Config) -> None:
     await state.clear()
     response = await config.tg_bot.owm_api.get_weather(config=config, city=message.text)
-    text = f"🏢  Город: {message.text}\n⛅  Погода: {response['weather'][0]['description']}\n🌡  Температура: {response['main']['temp']} °C"
-    await message.answer(text=text,
-                         reply_markup=await get_cancel_to_menu_keyboard())
+    logging.info(response)
+    if response["cod"] == "404":
+        await state.set_state(WeatherState.waiting_enter_city)
+        text = "Город, который вы ввели не удалось найти.\nПожалуйста, введите снова."
+        await message.answer(text=text,
+                             reply_markup=await get_cancel_to_menu_keyboard())
+    else:
+        text = f"🏢  Город: {message.text}\n⛅  Погода: {response['weather'][0]['description']}\n🌡  Температура: {response['main']['temp']} °C"
+        await message.answer(text=text,
+                            reply_markup=await get_cancel_to_menu_keyboard())
 
 # Конвертация валют
 @user_router.callback_query(F.data == "exchange")
@@ -116,15 +123,21 @@ async def application_sent(message: Message, state: FSMContext, config: Config) 
 @user_router.message(PollsState.waiting_options)
 async def application_sent(message: Message, state: FSMContext, bot: Bot) -> None:
     state_data = await state.get_data()
-    await bot.send_poll(message.chat.id,
-                        question=state_data['question'],
-                        options=message.text.split(','),
-                        is_anonymous=True,
-                        allows_multiple_answers=True)
-    text = "Опрос создан"
-    await message.answer(text=text,
-                         reply_markup=await get_cancel_to_menu_keyboard())
-    await state.clear()
+    if ',' in message.text:
+        await bot.send_poll(message.chat.id,
+                            question=state_data['question'],
+                            options=message.text.split(','),
+                            is_anonymous=True,
+                            allows_multiple_answers=True)
+        text = "Опрос создан"
+        await message.answer(text=text,
+                            reply_markup=await get_cancel_to_menu_keyboard())
+        await state.clear()
+    else:
+        await state.set_state(PollsState.waiting_options)
+        text = "Ответы нужно писать в одну строчку через запятую."
+        await message.answer(text=text,
+                            reply_markup=await get_cancel_to_menu_keyboard())
 
 # Картинка с милыми животными
 @user_router.callback_query(F.data == "imgs")
@@ -132,7 +145,7 @@ async def application_sent(call: CallbackQuery, config: Config) -> None:
     await call.answer()
     query = "cute-animals"
     response = await config.tg_bot.pxels_api.search_photos(config=config, query=query)
-    text = 'Картинка с милыми животными:'
+    text = 'Картинка с милыми животными.'
 
     await call.message.delete()
     await call.message.answer_photo(
